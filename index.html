@@ -116,8 +116,8 @@
     </div>
 
     <script>
-        // ضع رابط الـ Web App الخاص بك هنا بعد عمل Deploy بصيغة إصدار جديد
-        const SCRIPT_URL = "رابط_جوجل_شيت_الجديد_هنا";
+        // ضع رابط الـ Web App الكامل الخاص بك هنا (تأكد أنه يبدأ بـ https://)
+        const SCRIPT_URL = "https://script.google.com/macros/s/هنا_تضع_الرابط_الجديد/exec";
         
         let loggedEmpCode = "";
         let originalRecords = [];
@@ -150,11 +150,13 @@
             document.getElementById('table-loader').classList.remove('hidden');
             document.getElementById('table-content-area').classList.add('hidden');
             try {
-                const response = await fetch(`${SCRIPT_URL}?empCode=${encodeURIComponent(loggedEmpCode)}`);
+                // دمج وتأكيد صحة تكوين الرابط لمنع الـ 404
+                const fetchUrl = SCRIPT_URL + "?empCode=" + encodeURIComponent(loggedEmpCode);
+                const response = await fetch(fetchUrl);
                 originalRecords = await response.json();
                 processTableData();
             } catch (error) {
-                alert("خطأ أثناء الاتصال بالسيرفر، تأكد من تحديث ونشر كود Apps Script بشكل صحيح.");
+                alert("خطأ أثناء الاتصال بالسيرفر، تأكد من وضع الرابط الصحيح كاملاً ونشر كود Apps Script كإصدار جديد (New Version).");
             }
             document.getElementById('table-loader').classList.add('hidden');
             document.getElementById('table-content-area').classList.remove('hidden');
@@ -282,6 +284,7 @@
 
         function autoExpand(el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 
+        // تم تعديل ميكانيزم الإرسال ليتوافق مع أمان المتصفحات تماماً ويمنع حظر الـ CORS
         async function saveSingleRow(rowIndex) {
             const indicator = document.getElementById('saving-indicator');
             if(indicator) indicator.classList.remove('hidden');
@@ -290,10 +293,16 @@
             const nts = document.getElementById(`notes-${rowIndex}`).value;
             const fUp = cleanDateToYYYYMMDD(document.getElementById(`followUp-${rowIndex}`).value);
 
+            // تحويل البيانات لـ URL encoded بدلاً من JSON لمنع مشاكل الـ CORS الصارمة
+            const details = { rowIndex: rowIndex, status: stat, notes: nts, followUpDate: fUp };
+            const formBody = Object.keys(details).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(details[key])).join('&');
+
             try {
                 await fetch(SCRIPT_URL, {
-                    method: 'POST', mode: 'no-cors',
-                    body: JSON.stringify({ rowIndex: rowIndex, status: stat, notes: nts, followUpDate: fUp })
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                    body: formBody
                 });
                 modifiedRows.delete(rowIndex);
                 const btn = document.getElementById(`btn-save-${rowIndex}`);
@@ -312,10 +321,15 @@
                 const n = document.getElementById(`notes-${rId}`).value;
                 const f = cleanDateToYYYYMMDD(document.getElementById(`followUp-${rId}`).value);
                 
+                const details = { rowIndex: rId, status: s, notes: n, followUpDate: f };
+                const formBody = Object.keys(details).map(key => encodeURIComponent(key) + '=' + encodeURIComponent(details[key])).join('&');
+
                 try {
                     await fetch(SCRIPT_URL, {
-                        method: 'POST', mode: 'no-cors',
-                        body: JSON.stringify({ rowIndex: rId, status: s, notes: n, followUpDate: f })
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+                        body: formBody
                     });
                     modifiedRows.delete(rId);
                     const btn = document.getElementById(`btn-save-${rId}`);
