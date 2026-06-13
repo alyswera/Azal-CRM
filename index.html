@@ -15,13 +15,7 @@
         .alert-row { background-color: #fee2e2 !important; }
         th { border: 1.5px solid #94a3b8 !important; text-align: center !important; }
         td { border: 1.5px solid #cbd5e1 !important; }
-        
-        .dynamic-textarea {
-            resize: none;
-            overflow-y: hidden;
-            min-height: 38px;
-            line-height: 1.4;
-        }
+        .dynamic-textarea { resize: none; overflow-y: hidden; min-height: 38px; line-height: 1.4; }
     </style>
 </head>
 <body class="min-h-screen flex items-center justify-center">
@@ -32,14 +26,15 @@
                 <i class="fa-solid fa-phone-volume"></i>
             </div>
             <h2 class="text-2xl font-extrabold text-slate-900 tracking-tight">نظام علاقات مبيعات الشيت</h2>
-            <p class="text-slate-500 text-sm mt-1 font-medium">الرجاء اختيار الكود التعريفي الخاص بك للبدء</p>
+            <p class="text-slate-500 text-sm mt-1 font-medium">أدخل كودك الشخصي بدقة لجلب المتابعات الخاصة بك</p>
         </div>
         <div class="space-y-5">
             <div>
-                <label class="block text-base font-bold text-slate-800 mb-2">اختر كود الموظف</label>
-                <select id="login-emp-select" class="w-full border-2 border-slate-300 rounded-xl p-3 text-center font-bold text-lg bg-slate-50 focus:outline-none focus:border-emerald-600 focus:bg-white text-slate-900">
-                    <option value="">جاري جلب كافة الأكواد المتاحة من الشيت المباشر...</option>
-                </select>
+                <label class="block text-base font-bold text-slate-800 mb-2">كود الموظف الشخصي</label>
+                <div class="relative">
+                    <span class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 text-lg"><i class="fa-solid fa-id-badge"></i></span>
+                    <input type="text" id="login-emp-input" placeholder="مثال: CC 1" class="w-full border-2 border-slate-300 rounded-xl pr-10 pl-3 py-3.5 text-center font-bold text-lg bg-slate-50 focus:outline-none focus:border-emerald-600 focus:bg-white text-slate-900 transition-colors">
+                </div>
             </div>
             <button onclick="login()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-base p-3.5 rounded-xl transition shadow-lg shadow-emerald-100 cursor-pointer flex items-center justify-center gap-2">
                 دخول واستعراض البيانات المباشرة <i class="fa-solid fa-arrow-left"></i>
@@ -118,8 +113,7 @@
                                 <th class="p-3 w-28 bg-blue-950 text-white font-extrabold">إجراء</th>
                             </tr>
                         </thead>
-                        <tbody id="crm-table-body" class="divide-y-2 divide-slate-300 font-bold text-slate-900">
-                            </tbody>
+                        <tbody id="crm-table-body" class="divide-y-2 divide-slate-300 font-bold text-slate-900"></tbody>
                     </table>
                 </div>
                 
@@ -133,54 +127,28 @@
     </div>
 
     <script>
-        // ضع رابط الـ Web App الخاص بك المولد من الـ Apps Script هنا
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzpCXaJZDPM_QdmKKj0lNXETIcYoQssnqS7B0tQcHooQ9iWDHVijqqnjl6XPZ6EJld4ig/exec";
         
         let loggedEmpCode = "";
         let originalRecords = [];
         let currentSortField = 'date';
         let isSortAsc = false;
-        
         let modifiedRows = new Set();
         let autoSaveTimer = null;
-
-        window.addEventListener('DOMContentLoaded', fetchEmployeeCodesFromServer);
 
         window.addEventListener('beforeunload', (event) => {
             if (modifiedRows.size > 0) {
                 saveAllModifiedRowsSilently();
                 event.preventDefault();
-                event.returnValue = 'جاري حفظ بياناتك المعدلة تلقائياً، هل أنت متأكد من المغادرة؟';
+                event.returnValue = 'جاري حفظ بياناتك المعدلة تلقائياً...';
             }
         });
 
-        async function fetchEmployeeCodesFromServer() {
-            const select = document.getElementById('login-emp-select');
-            try {
-                const response = await fetch(`${SCRIPT_URL}?action=getEmpCodes`);
-                const codes = await response.json();
-                
-                if(!codes || codes.length === 0) {
-                    select.innerHTML = `<option value="">لا توجد أكواد مسجلة بالشيت حالياً</option>`;
-                    return;
-                }
-                
-                let optionsHtml = `<option value="">-- اضغط واختار الكود الخاص بك --</option>`;
-                codes.forEach(code => {
-                    optionsHtml += `<option value="${code}">${code}</option>`;
-                });
-                select.innerHTML = optionsHtml;
-            } catch (error) {
-                console.error("خطأ في جلب الأكواد:", error);
-                select.innerHTML = `<option value="">عذراً، فشل الاتصال بالسيرفر. يرجى التحقق من رابط النشر</option>`;
-            }
-        }
-
         function login() {
-            const selectVal = document.getElementById('login-emp-select').value;
-            if (!selectVal) { alert("من فضلك اختر كود الموظف الخاص بك أولاً للدخول!"); return; }
+            const inputVal = document.getElementById('login-emp-input').value.trim();
+            if (!inputVal) { alert("من فضلك أدخل كود الموظف الخاص بك للبدء!"); return; }
             
-            loggedEmpCode = selectVal;
+            loggedEmpCode = inputVal;
             document.getElementById('login-card').classList.add('hidden');
             document.getElementById('app-container').classList.remove('hidden');
             document.getElementById('user-display-badge').innerText = loggedEmpCode;
@@ -191,17 +159,15 @@
 
         async function logoutWithSave() {
             if (modifiedRows.size > 0) {
-                const ind = document.getElementById('saving-indicator');
-                ind.classList.remove('hidden');
+                document.getElementById('saving-indicator').classList.remove('hidden');
                 await saveAllModifiedRowsSilently();
             }
             if (autoSaveTimer) clearInterval(autoSaveTimer);
             modifiedRows.clear();
-
             loggedEmpCode = ""; originalRecords = [];
+            document.getElementById('login-emp-input').value = "";
             document.getElementById('app-container').classList.add('hidden');
             document.getElementById('login-card').classList.remove('hidden');
-            fetchEmployeeCodesFromServer();
         }
 
         async function loadDataFromSheet() {
@@ -217,7 +183,7 @@
             }
         }
 
-        // دالة مساعدة لتنظيف وتوحيد شكل التاريخ ليعمل بنجاح داخل الـ input
+        // دالة مساعدة معالجة وحل مشكلة اختفاء حقل التاريخ نهائياً وتحويل الصيغ لـ YYYY-MM-DD
         function formatDateToYYYYMMDD(dateInput) {
             if (!dateInput) return "";
             try {
@@ -225,14 +191,18 @@
                 if (dateStr.includes('T')) {
                     return dateStr.split('T')[0];
                 }
-                // التعامل مع التواريخ التي تأتي بصيغة مائلة مثل DD/MM/YYYY
                 if (dateStr.includes('/')) {
                     let parts = dateStr.split('/');
-                    if(parts[2] && parts[2].length === 4) { // شكل DD/MM/YYYY
-                        let day = parts[0].padStart(2, '0');
-                        let month = parts[1].padStart(2, '0');
-                        let year = parts[2];
-                        return `${year}-${month}-${day}`;
+                    if(parts[2] && parts[2].length === 4) { // DD/MM/YYYY
+                        return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+                    } else if (parts[0] && parts[0].length === 4) { // YYYY/MM/DD
+                        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
+                    }
+                }
+                if (dateStr.includes('-')) {
+                    let parts = dateStr.split('-');
+                    if(parts[0] && parts[0].length === 4) {
+                        return `${parts[0]}-${parts[1].padStart(2, '0')}-${parts[2].padStart(2, '0')}`;
                     }
                 }
                 const dObj = new Date(dateStr);
@@ -277,14 +247,12 @@
 
             let alertCounter = 0;
             records = records.filter(r => {
-                let isExpired = false;
-                let isToday = false;
+                let isExpired = false; let isToday = false;
                 const fDate = formatDateToYYYYMMDD(r.followUpDate);
                 
                 if (fDate) {
                     if (fDate < todayStr && !r.status.includes('تأكيد') && !r.status.includes('غير جاد')) {
-                        isExpired = true;
-                        alertCounter++;
+                        isExpired = true; alertCounter++;
                     } else if (fDate === todayStr) {
                         isToday = true;
                     }
@@ -295,36 +263,27 @@
             });
 
             records.sort((a, b) => {
-                let valA = a[currentSortField];
-                let valB = b[currentSortField];
-                if (currentSortField === 'price') {
-                    return isSortAsc ? valA - valB : valB - valA;
-                } else {
-                    return isSortAsc ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
-                }
+                let valA = a[currentSortField]; let valB = b[currentSortField];
+                if (currentSortField === 'price') return isSortAsc ? valA - valB : valB - valA;
+                return isSortAsc ? String(valA).localeCompare(String(valB)) : String(valB).localeCompare(String(valA));
             });
 
             document.getElementById('counter-total').innerText = records.length;
             document.getElementById('counter-alerts').innerText = alertCounter;
-
             renderTableRows(records, todayStr);
         }
 
         function renderTableRows(records, todayStr) {
             const tbody = document.getElementById('crm-table-body');
-            document.getElementById('table-loader').classList.add('hidden');
-            document.getElementById('table-content-area').classList.remove('hidden');
+            let html = "";
             
             if (records.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500 font-extrabold text-base">لا توجد سجلات مطابقة للخيارات الزمنية الحالية.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="10" class="p-8 text-center text-slate-500 font-extrabold text-base">لا توجد سجلات مطابقة.</td></tr>`;
                 return;
             }
 
-            let html = "";
             records.forEach((row, index) => {
-                // استدعاء محلل التواريخ الذكي الجديد لخلية تاريخ المتابعة لضمان بقائها ظاهرة دائماً
                 const cleanFollowUpDate = formatDateToYYYYMMDD(row.followUpDate);
-                
                 let isRowAlert = false;
                 if (cleanFollowUpDate && cleanFollowUpDate < todayStr && !row.status.includes('تأكيد') && !row.status.includes('غير جاد')) {
                     isRowAlert = true;
@@ -343,7 +302,7 @@
                         <td class="p-3 font-black text-emerald-700 text-sm">${row.price.toLocaleString()} ج.م</td>
                         
                         <td class="p-2 bg-blue-50/10">
-                            <select id="status-${row.rowIndex}" onchange="markRowAsModified(${row.rowIndex})" class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900 focus:border-emerald-600">
+                            <select id="status-${row.rowIndex}" onchange="markRowAsModified(${row.rowIndex})" class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900">
                                 <option value="" ${row.status === '' ? 'selected' : ''}>-- إختر الحالة --</option>
                                 <option value="لم يتم الرد" ${row.status === 'لم يتم الرد' ? 'selected' : ''}>لم يتم الرد</option>
                                 <option value="متابعة" ${row.status === 'متابعة' ? 'selected' : ''}>متابعة</option>
@@ -352,13 +311,13 @@
                             </select>
                         </td>
                         <td class="p-2 bg-blue-50/10">
-                            <textarea id="notes-${row.rowIndex}" oninput="autoExpandTextarea(this); markRowAsModified(${row.rowIndex})" placeholder="أدخل الملاحظة..." class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900 focus:border-emerald-600 focus:bg-white text-right dynamic-textarea font-medium">${row.notes}</textarea>
+                            <textarea id="notes-${row.rowIndex}" oninput="autoExpandTextarea(this); markRowAsModified(${row.rowIndex})" placeholder="أدخل الملاحظة..." class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900 text-right dynamic-textarea font-medium">${row.notes}</textarea>
                         </td>
                         <td class="p-2 bg-blue-50/10">
-                            <input type="date" id="followUp-${row.rowIndex}" onchange="markRowAsModified(${row.rowIndex})" value="${cleanFollowUpDate}" class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900 text-center focus:border-emerald-600">
+                            <input type="date" id="followUp-${row.rowIndex}" onchange="markRowAsModified(${row.rowIndex})" value="${cleanFollowUpDate}" class="w-full border-2 border-slate-300 rounded-lg p-2 font-bold text-xs bg-white text-slate-900 text-center">
                         </td>
                         <td class="p-2 bg-slate-50">
-                            <button id="btn-save-${row.rowIndex}" onclick="saveRowData(${row.rowIndex})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-1 rounded-md transition shadow cursor-pointer">
+                            <button id="btn-save-${row.rowIndex}" onclick="saveRowData(${row.rowIndex})" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs py-2 px-1 rounded-md transition cursor-pointer">
                                 <i class="fa-solid fa-floppy-disk ml-1"></i> حفظ
                             </button>
                         </td>
@@ -366,132 +325,76 @@
                 `;
             });
             tbody.innerHTML = html;
-            
-            document.querySelectorAll('.dynamic-textarea').forEach(textarea => {
-                autoExpandTextarea(textarea);
-            });
+            document.querySelectorAll('.dynamic-textarea').forEach(autoExpandTextarea);
         }
 
         function markRowAsModified(rowIndex) {
             modifiedRows.add(rowIndex);
             const saveBtn = document.getElementById(`btn-save-${rowIndex}`);
-            if (saveBtn) {
-                saveBtn.classList.remove('bg-emerald-600', 'hover:bg-emerald-700');
-                saveBtn.classList.add('bg-amber-500', 'hover:bg-amber-600');
-            }
+            if (saveBtn) { saveBtn.classList.remove('bg-emerald-600'); saveBtn.classList.add('bg-amber-500'); }
         }
 
         function toggleSort(field) {
-            if (currentSortField === field) { isSortAsc = !isSortAsc; } 
-            else { currentSortField = field; isSortAsc = true; }
+            if (currentSortField === field) { isSortAsc = !isSortAsc; } else { currentSortField = field; isSortAsc = true; }
             processTableData();
         }
 
-        function autoExpandTextarea(element) {
-            element.style.height = 'auto';
-            element.style.height = element.scrollHeight + 'px';
-        }
+        function autoExpandTextarea(element) { element.style.height = 'auto'; element.style.height = element.scrollHeight + 'px'; }
 
         async function saveRowData(rowIndex) {
-            const ind = document.getElementById('saving-indicator');
-            ind.classList.remove('hidden');
-
+            const ind = document.getElementById('saving-indicator'); ind.classList.remove('hidden');
             const newStatus = document.getElementById(`status-${rowIndex}`).value;
             const newNotes = document.getElementById(`notes-${rowIndex}`).value;
-            // إرسال التواريخ منظمة بصيغة واضحة تمنع اللبس داخل خلايا الشيت الكبيرة
             const newFollowUp = formatDateToYYYYMMDD(document.getElementById(`followUp-${rowIndex}`).value);
 
             const localRecord = originalRecords.find(r => r.rowIndex === rowIndex);
-            if (localRecord) { 
-                localRecord.status = newStatus;
-                localRecord.notes = newNotes;
-                localRecord.followUpDate = newFollowUp;
-            }
+            if (localRecord) { localRecord.status = newStatus; localRecord.notes = newNotes; localRecord.followUpDate = newFollowUp; }
 
             try {
                 await fetch(SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({
-                        rowIndex: rowIndex,
-                        status: newStatus,
-                        notes: newNotes,
-                        followUpDate: newFollowUp
-                    })
+                    method: 'POST', mode: 'no-cors',
+                    body: JSON.stringify({ rowIndex: rowIndex, status: newStatus, notes: newNotes, followUpDate: newFollowUp })
                 });
-                
                 modifiedRows.delete(rowIndex);
                 const saveBtn = document.getElementById(`btn-save-${rowIndex}`);
-                if (saveBtn) {
-                    saveBtn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
-                    saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
-                }
+                if (saveBtn) { saveBtn.classList.remove('bg-amber-500'); saveBtn.classList.add('bg-emerald-600'); }
                 setTimeout(() => { ind.classList.add('hidden'); }, 600);
-            } catch (error) {
-                console.error("فشل ترحيل السجل:", error);
-                ind.classList.add('hidden');
-            }
+            } catch (error) { ind.classList.add('hidden'); }
         }
 
         async function saveAllModifiedRowsSilently() {
             if (modifiedRows.size === 0) return;
-
-            const ind = document.getElementById('saving-indicator');
-            if (ind) ind.classList.remove('hidden');
-
+            const ind = document.getElementById('saving-indicator'); if (ind) ind.classList.remove('hidden');
             const rowsToSave = Array.from(modifiedRows);
+            
             const savePromises = rowsToSave.map(async (rowIndex) => {
                 const statusEl = document.getElementById(`status-${rowIndex}`);
                 const notesEl = document.getElementById(`notes-${rowIndex}`);
                 const followUpEl = document.getElementById(`followUp-${rowIndex}`);
-
                 if (!statusEl || !notesEl || !followUpEl) return;
 
-                const newStatus = statusEl.value;
-                const newNotes = notesEl.value;
+                const newStatus = statusEl.value; const newNotes = notesEl.value;
                 const newFollowUp = formatDateToYYYYMMDD(followUpEl.value);
 
                 const localRecord = originalRecords.find(r => r.rowIndex === rowIndex);
-                if (localRecord) {
-                    localRecord.status = newStatus;
-                    localRecord.notes = newNotes;
-                    localRecord.followUpDate = newFollowUp;
-                }
+                if (localRecord) { localRecord.status = newStatus; localRecord.notes = newNotes; localRecord.followUpDate = newFollowUp; }
 
-                try {
-                    return fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            rowIndex: rowIndex,
-                            status: newStatus,
-                            notes: newNotes,
-                            followUpDate: newFollowUp
-                        })
-                    }).then(() => {
-                        modifiedRows.delete(rowIndex);
-                        const saveBtn = document.getElementById(`btn-save-${rowIndex}`);
-                        if (saveBtn) {
-                            saveBtn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
-                            saveBtn.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
-                        }
-                    });
-                } catch (err) {
-                    console.error("خطأ ترحيل السطر الوقائي:", rowIndex, err);
-                }
+                return fetch(SCRIPT_URL, {
+                    method: 'POST', mode: 'no-cors',
+                    body: JSON.stringify({ rowIndex: rowIndex, status: newStatus, notes: newNotes, followUpDate: newFollowUp })
+                }).then(() => {
+                    modifiedRows.delete(rowIndex);
+                    const saveBtn = document.getElementById(`btn-save-${rowIndex}`);
+                    if (saveBtn) { saveBtn.classList.remove('bg-amber-500'); saveBtn.classList.add('bg-emerald-600'); }
+                });
             });
-
             await Promise.all(savePromises);
             if (ind) setTimeout(() => { ind.classList.add('hidden'); }, 1000);
         }
 
         function startAutoSaveInterval() {
             if (autoSaveTimer) clearInterval(autoSaveTimer);
-            autoSaveTimer = setInterval(() => {
-                if (modifiedRows.size > 0) {
-                    saveAllModifiedRowsSilently();
-                }
-            }, 300000); 
+            autoSaveTimer = setInterval(() => { if (modifiedRows.size > 0) saveAllModifiedRowsSilently(); }, 300000); 
         }
     </script>
 </body>
